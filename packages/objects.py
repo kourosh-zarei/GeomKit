@@ -1,6 +1,9 @@
+import json
+from collections import defaultdict
 from typing import Optional, Tuple, List
 import numpy as np
 from packages.utils import distance, pol_to_cart, cart_to_pol
+
 
 NORMALISE_DEFAULT = True
 
@@ -10,7 +13,7 @@ class Point:
     This class represents a 3D point in space. The point is defined by three coordinates (a, b, c).
     """
 
-    def __init__(self, a: float, b: float, c: float) -> None:
+    def __init__(self, a: float, b: float, c: float, name: str = None) -> None:
         """
         Constructor for a Point object.
 
@@ -21,6 +24,7 @@ class Point:
         """
 
         self.array = np.array([a, b, c])
+        self.name = name
 
     def __str__(self):
         """
@@ -94,7 +98,7 @@ class Point:
         return distance(*self.array)
 
     @staticmethod
-    def from_np(abc: np.ndarray):
+    def from_np(abc: np.ndarray, name: str = None):
         """
         Static method to create a Point object from a numpy array.
 
@@ -112,7 +116,7 @@ class Point:
             raise TypeError(
                 f"unsupported shape size for Point: expected (3,), got '{abc.shape}'"
             )
-        return Point(*abc)
+        return Point(*abc, name=name)
 
     @staticmethod
     def origin() -> "Point":
@@ -211,7 +215,10 @@ class Line:
     """
 
     def __init__(
-        self, start_point: Optional[Point] = None, end_point: Optional[Point] = None
+        self,
+        start_point: Optional[Point] = None,
+        end_point: Optional[Point] = None,
+        name: str = None,
     ) -> None:
         """
         Creates a new Line object.
@@ -223,6 +230,7 @@ class Line:
 
         self.start = start_point
         self.end = end_point
+        self.name = name
 
     @staticmethod
     def from_(start_point: Point) -> "AmbiguousLine":
@@ -278,6 +286,30 @@ class Line:
         """
 
         return distance(*(self.end.array - self.start.array))
+
+    def to_mesh(
+        self, density: int, camera_radius: float, subject_radius: float
+    ) -> List[Point]:
+        x1, y1, z1 = self.start.array
+        x2, y2, z2 = self.end.array
+        points = np.column_stack(
+            (
+                np.linspace(x1, x2, density),
+                np.linspace(y1, y2, density),
+                np.linspace(z1, z2, density),
+            )
+        )
+        points = [Point.from_np(point, self.name) for point in points]
+        points = [
+            point
+            for point in points
+            if distance(*point.array) < (0.5 * (camera_radius - subject_radius))
+        ]
+        return points
+
+    def with_name(self, name: str):
+        self.name = name
+        return self
 
 
 class AmbiguousLine:
@@ -410,7 +442,7 @@ class Vector:
         )
 
     @property
-    def line(self):
+    def line(self) -> Line:
         return Line.from_(self.start).to(self.end)
 
     @staticmethod
@@ -627,7 +659,15 @@ class Square:
     A class representing a square in 3D space, defined by four points.
     """
 
-    def __init__(self, a: Point, b: Point, c: Point, d: Point, source_point: Point):
+    def __init__(
+        self,
+        a: Point,
+        b: Point,
+        c: Point,
+        d: Point,
+        source_point: Point,
+        name: str = None,
+    ):
         """
         Creates a new Square object.
 
@@ -638,6 +678,7 @@ class Square:
 
         self.a, self.b, self.c, self.d = a, b, c, d
         self.source = source_point
+        self.name = name
 
     @staticmethod
     def generate_picture(
@@ -646,6 +687,7 @@ class Square:
         width: float = 36,
         height: float = 24,
         unit: float = 1_000,
+        name: str = None,
     ) -> "Square":
         """
         Static method that generates a picture of the Square object as seen from a camera.
@@ -677,34 +719,7 @@ class Square:
         b = center.move_by(m_u).move_by(m_rl)
         c = center.move_by(-m_u).move_by(m_rl)
         d = center.move_by(-m_u).move_by(-m_rl)
-        return Square(a, b, c, d, camera)
-
-    @staticmethod
-    def generate_pictures(
-        points: List[Point],
-        focal_length: float,
-        width: float,
-        height: float,
-        unit: float,
-    ) -> List["Square"]:
-        """
-        Static method that generates pictures of the Square object as seen from many cameras.
-
-        Parameters:
-        cameras (List[Point]): The location of the cameras in 3D space.
-        focal_length (float): The focal length of the camera (in mm).
-        width (float): The width of the picture (in mm).
-        height (float): The height of the picture (in mm).
-        unit (float): The unit of length used in the picture (mm)
-
-        Returns:
-        Square: Many new Square objects representing the pictures of the original Squares as seen from the cameras.
-        """
-
-        return [
-            Square.generate_picture(point, focal_length, width, height, unit)
-            for point in points
-        ]
+        return Square(a, b, c, d, camera, name)
 
     def to_mesh(self):
         """
@@ -726,23 +741,24 @@ class Square:
         width_steps = np.linspace(0, 1, pixel_width)
         height_steps = np.linspace(0, 1, pixel_height)
         pixels = []
-        for ws in width_steps:
-            for hs in height_steps:
+        for w_ind, ws in enumerate(width_steps):
+            for h_ind, hs in enumerate(height_steps):
                 top = (1 - ws) * self.a.array + ws * self.b.array
                 bottom = (1 - ws) * self.d.array + ws * self.c.array
                 pixel = (1 - hs) * top + hs * bottom
-                pixels.append(Point.from_np(pixel))
+                pixels.append(
+                    Point.from_np(pixel, f"img-{self.name} w-{w_ind} h-{h_ind}")
+                )
         return pixels
 
-    def to_rays(
-        self, pixel_width, pixel_height, ray_length: float = 100, unit: float = 1_000
-    ) -> List[Line]:
+    def to_rays(self, pixel_width, pixel_height, ray_length: float) -> List[Line]:
         pixels = self.to_pixel_array(pixel_width, pixel_height)
-        rays = [
-            (Line.from_(self.source).to(pixel).vector() * ray_length * unit).line
+        return [
+            (
+                Line.from_(self.source).to(pixel).vector(True) * ray_length
+            ).line.with_name(pixel.name)
             for pixel in pixels
         ]
-        return rays
 
 
 class Plane:
@@ -840,3 +856,29 @@ class Plane:
             mg_x, mg_y = np.meshgrid(-coord, coord)
             mg_z = (-a * mg_x - b * mg_y - d) / c
         return mg_x, mg_y, mg_z
+
+
+class SubSpace:
+    """
+    An object representing the subspace division concept of this project.
+    The aim of this object is to store ray objects and identify to which subspaces each ray belongs to.
+    """
+
+    def __init__(self, subspace_divisions: int, length: float = 1):
+        self.subspace_assignments = defaultdict(set)
+        if subspace_divisions == 1:
+            self.points = [Point.origin()]
+        else:
+            length_division = np.linspace(-length / 2, length / 2, subspace_divisions)
+            self.points = [
+                [x, y, z]
+                for x in length_division
+                for y in length_division
+                for z in length_division
+            ]
+
+    def json(self):
+        json.load()
+
+    def save(self):
+        json.

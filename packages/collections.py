@@ -1,5 +1,5 @@
 from typing import List
-from packages.objects import Point, Vector, Plane
+from packages.objects import Point, Vector, Square
 
 
 class Points:
@@ -7,33 +7,25 @@ class Points:
     A class representing a collection of points in 3D space.
     """
 
-    def __init__(self, points: List[Point]):
+    def __init__(self, elements: List[Point]):
         """
         Creates a new Points object.
 
         Parameters:
-        points (List[Point]): A list of Point objects.
+        elements (List[Point]): A list of Point objects.
         """
 
-        self.points = points
+        self.elements = elements
 
     def __iter__(self):
         """
         Returns an iterator over the points in the collection.
         """
 
-        return iter(self.points)
-
-    @property
-    def elements(self):
-        """
-        Returns the list of points in the collection.
-        """
-
-        return self.points
+        return iter(self.elements)
 
     @staticmethod
-    def get_points_at_incl(
+    def get_points_at_inclination(
         num_samples: int, incl: float, r: float = 1, normalise: bool = False
     ) -> "Points":
         """
@@ -63,9 +55,9 @@ class Points:
 
     @staticmethod
     def get_points_at_inclinations(
+        r: float,
         num_samples: int,
         inclinations: List[float],
-        r: float = 1,
         normalise: bool = False,
     ) -> "Points":
         """
@@ -84,7 +76,7 @@ class Points:
         points = [
             point
             for inclination in inclinations
-            for point in Points.get_points_at_incl(
+            for point in Points.get_points_at_inclination(
                 num_samples, inclination, r, normalise
             )
         ]
@@ -123,80 +115,123 @@ class Points:
         return Points(points)
 
 
-class AmbiguousPlanes:
+class Squares:
     """
-    A class representing a collection of vectors that define ambiguous planes in 3D space.
+    A class representing squares in 3D space, each defined by four points.
     """
 
-    def __init__(self, vectors: List[Vector]):
+    def __init__(self, elements: List[Square]):
         """
-        Creates a new AmbiguousPlanes object.
+        Creates a new Points object.
 
         Parameters:
-        vectors (List[Vector]): A list of Vector objects that define the ambiguous planes.
+        elements (List[Point]): A list of Point objects.
         """
 
-        self.vectors = vectors
-
-    def at(self, points: List[Point]) -> "Planes":
-        """
-        This method generates a collection of planes defined by the intersection of the vectors in this object with
-        the given points.
-
-        Parameters:
-        points (List[Point]): A list of points with which the vectors should intersect.
-
-        Returns:
-        Planes: A collection of planes at the given points.
-        """
-
-        planes = [
-            Plane.intersects(vector).at(point)
-            for vector, point in zip(self.vectors, points)
-        ]
-        return Planes(planes)
-
-
-class Planes:
-    """
-    A class representing a collection of planes in 3D space.
-    """
-
-    def __init__(self, planes: List[Plane]):
-        """
-        Creates a new Planes object.
-
-        Parameters:
-        planes (List[Plane]): A list of Plane objects.
-        """
-
-        self.planes = planes
-
-    def __iter__(self):
-        """
-        Returns an iterator over the planes in the collection.
-        """
-
-        return iter(self.planes)
-
-    @property
-    def elements(self):
-        """
-        Returns the list of planes in the collection.
-        """
-
-        return self.planes
+        self.elements = elements
 
     @staticmethod
-    def intersect(vectors: List[Vector]) -> AmbiguousPlanes:
+    def generate_pictures(
+        points: Points,
+        focal_length: float,
+        width: float,
+        height: float,
+        unit: float,
+    ) -> List["Square"]:
         """
-        This method creates an AmbiguousPlanes object from a list of vectors. Each vector will define a plane where it intersects with other vectors.
+        Static method that generates pictures of the Square object as seen from many cameras.
 
         Parameters:
-        vectors (List[Vector]): A list of vectors to create intersections.
+        cameras (List[Point]): The location of the cameras in 3D space.
+        focal_length (float): The focal length of the camera (in mm).
+        width (float): The width of the picture (in mm).
+        height (float): The height of the picture (in mm).
+        unit (float): The unit of length used in the picture (mm)
 
         Returns:
-        AmbiguousPlanes: A collection of planes created from the intersections of the vectors.
+        Square: Many new Square objects representing the pictures of the original Squares as seen from the cameras.
         """
 
-        return AmbiguousPlanes(vectors)
+        return [
+            Square.generate_picture(point, focal_length, width, height, unit, index)
+            for index, point in enumerate(points.elements)
+        ]
+
+
+# class AmbiguousPlanes:
+#     """
+#     A class representing a collection of vectors that define ambiguous planes in 3D space.
+#     """
+#
+#     def __init__(self, vectors: List[Vector]):
+#         """
+#         Creates a new AmbiguousPlanes object.
+#
+#         Parameters:
+#         vectors (List[Vector]): A list of Vector objects that define the ambiguous planes.
+#         """
+#
+#         self.vectors = vectors
+#
+#     def at(self, points: List[Point]) -> "Planes":
+#         """
+#         This method generates a collection of planes defined by the intersection of the vectors in this object with
+#         the given points.
+#
+#         Parameters:
+#         points (List[Point]): A list of points with which the vectors should intersect.
+#
+#         Returns:
+#         Planes: A collection of planes at the given points.
+#         """
+#
+#         planes = [
+#             Plane.intersects(vector).at(point)
+#             for vector, point in zip(self.vectors, points)
+#         ]
+#         return Planes(planes)
+
+
+# class Planes:
+#     """
+#     A class representing a collection of planes in 3D space.
+#     """
+#
+#     def __init__(self, planes: List[Plane]):
+#         """
+#         Creates a new Planes object.
+#
+#         Parameters:
+#         planes (List[Plane]): A list of Plane objects.
+#         """
+#
+#         self.planes = planes
+#
+#     def __iter__(self):
+#         """
+#         Returns an iterator over the planes in the collection.
+#         """
+#
+#         return iter(self.planes)
+#
+#     @property
+#     def elements(self):
+#         """
+#         Returns the list of planes in the collection.
+#         """
+#
+#         return self.planes
+#
+#     @staticmethod
+#     def intersect(vectors: List[Vector]) -> AmbiguousPlanes:
+#         """
+#         This method creates an AmbiguousPlanes object from a list of vectors. Each vector will define a plane where it intersects with other vectors.
+#
+#         Parameters:
+#         vectors (List[Vector]): A list of vectors to create intersections.
+#
+#         Returns:
+#         AmbiguousPlanes: A collection of planes created from the intersections of the vectors.
+#         """
+#
+#         return AmbiguousPlanes(vectors)

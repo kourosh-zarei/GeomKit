@@ -27,7 +27,3 @@ def flatten(*args):
         else:
             result.append(arg)
     return result
-
-
-def printer(*args):
-    return args

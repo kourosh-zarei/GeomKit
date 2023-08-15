@@ -1,4 +1,6 @@
 import random
+
+import numpy as np
 import plotly.graph_objects as go
 from enum import Enum
 from typing import List
@@ -83,6 +85,7 @@ def handle_points(fig, points: List[Point], marker_size: float):
                 y=[y],
                 z=[z],
                 mode="markers",
+                name=point.name,
                 marker=dict(size=marker_size, color=rand_colour()),
             )
         )
@@ -111,6 +114,7 @@ def easy_plot(
     plane_size: float = 2,
     plane_opacity: float = 0.5,
     window_size=DEF_WINDOW_SIZE,
+    subject_radius: float = 1,
 ):
     """
     Plots 3D points, vectors, planes and squares using Plotly.
@@ -143,6 +147,13 @@ def easy_plot(
     handle_squares(fig, squares, plane_opacity=plane_opacity)
     handle_planes(fig, planes, plane_size=plane_size, plane_opacity=plane_opacity)
     handle_points(fig, vectors, marker_size=marker_size)
+
+    u = np.linspace(0, 2 * np.pi, 100)
+    v = np.linspace(0, np.pi, 100)
+    x = subject_radius * np.outer(np.cos(u), np.sin(v))
+    y = subject_radius * np.outer(np.sin(u), np.sin(v))
+    z = subject_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+    fig.add_trace(go.Surface(x=x, y=y, z=z))
 
     Axis.add_to_fig(fig, window_size)
     _range = [-window_size, window_size]
