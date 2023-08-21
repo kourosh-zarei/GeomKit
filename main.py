@@ -1,5 +1,7 @@
 from multiprocessing import Pool, cpu_count
 import time
+
+import numpy as np
 from tqdm import tqdm
 from scipy.spatial import KDTree
 from packages.collections import Points, Squares
@@ -9,10 +11,10 @@ from functools import partial
 from packages.rendering import easy_plot
 
 
-def assign_center(centre):
+def assign_center(tree, point_cloud, centre, subspace_radius):
     distances, indices = tree.query(
         centre,
-        distance_upper_bound=0.5,
+        distance_upper_bound=subspace_radius * np.sqrt(2),
         k=len(coords),
     )
     points = [
@@ -24,22 +26,23 @@ def assign_center(centre):
 
 
 if __name__ == "__main__":
-    subject_radius = 0.5
+    subject_radius = 1
     camera_radius = 3
-    cams_along_inclination = 5
-    inclinations_range = [45]
+    cams_along_inclination = 1
+    inclinations_range = [20, 60, 80]
 
     focal_length = 50
     sensor_width = 36
     sensor_height = 24
-    pixel_width = 108
-    pixel_height = 72
+    pixel_width = 6
+    pixel_height = 4
     unit = 1000  # mm
 
-    points_density_for_line = 10
+    points_density_for_line = 20
     window_size = 5
-    # CPU_COUNT = 1  # 
-    CPU_COUNT = cpu_count()  # 100%|██████████| 6/6 [00:59<00:00,  9.84s/it]
+    subspace_count = 2
+    # CPU_COUNT = 1
+    CPU_COUNT = cpu_count()
 
     cameras = Points.get_points_at_inclinations(
         camera_radius, cams_along_inclination, inclinations_range
@@ -56,7 +59,7 @@ if __name__ == "__main__":
             pixel_width=pixel_width,
             pixel_height=pixel_height,
             camera_radius=camera_radius,
-            offset=0.5
+            offset=0.5,
         )
         rays_temp = list(tqdm(pool.imap(func, pictures), total=len(pictures)))
     rays = [ray for sublist in rays_temp for ray in sublist]
@@ -70,25 +73,27 @@ if __name__ == "__main__":
             ray_to_mesh_points,
             points_density_for_line=points_density_for_line,
             camera_radius=camera_radius,
-            subject_radius=subject_radius
+            subject_radius=subject_radius,
         )
         point_cloud_temp = list(tqdm(pool.imap(func, rays), total=len(rays)))
     point_cloud = [point for sublist in point_cloud_temp for point in sublist]
     time.sleep(0.5)
     print("got point cloud")
 
-    subspace = SubSpace(5)
+    subspace = SubSpace(subspace_count)
     coords = [point.array.tolist() for point in point_cloud]
-    tree = KDTree(coords)
+    subspace_tree = KDTree(coords)
 
     # subspace assignment
     print("assigning point cloud ...")
-    all_close_points = []
-    for point in tqdm(subspace.points, desc="Assigning points"):
-        center, close_points = assign_center(point)
+    # all_close_points = []
+    for subspace_centre in tqdm(subspace.points, desc="Assigning points"):
+        subspace_centre, close_points = assign_center(
+            subspace_tree, point_cloud, subspace_centre, subject_radius / subspace_count
+        )
         for point in close_points:
-            subspace.subspace_assignments[str(center)].add(point.name)
-        all_close_points.extend(close_points)
+            subspace.subspace_assignments[str(subspace_centre)].add(point)
+        # all_close_points.extend(close_points)
     time.sleep(0.5)
     print("assigned point cloud")
 
@@ -97,12 +102,13 @@ if __name__ == "__main__":
     #     print(v)
     #     print("\n")
 
-    # print("rendering...")
-    # easy_plot(
-    #     Point.origin(),
-    #     cameras.elements,
-    #     all_close_points,
-    #     window_size=window_size,
-    #     subject_radius=subject_radius,
-    # )
-    # print("render completed")
+    print("rendering...")
+    easy_plot(
+        Point.origin(),
+        cameras.elements,
+        subspace,
+        window_size=window_size,
+        subject_radius=subject_radius,
+        show_surface=False,
+    )
+    print("render completed")

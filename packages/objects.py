@@ -301,9 +301,7 @@ class Line:
         )
         points = [Point.from_np(point, self.name) for point in points]
         points = [
-            point
-            for point in points
-            if distance(*point.array) < (0.5 * (camera_radius - subject_radius))
+            point for point in points if distance(*point.array) < (subject_radius * 1.2)
         ]
         return points
 
@@ -747,7 +745,7 @@ class Square:
                 bottom = (1 - ws) * self.d.array + ws * self.c.array
                 pixel = (1 - hs) * top + hs * bottom
                 pixels.append(
-                    Point.from_np(pixel, f"img-{self.name} w-{w_ind} h-{h_ind}")
+                    Point.from_np(pixel, f"img_{self.name} w_{w_ind} h_{h_ind}")
                 )
         return pixels
 
@@ -880,5 +878,5 @@ class SubSpace:
     def json(self):
         json.load()
 
-    def save(self):
-        json.
+    # def save(self):
+    #     json.

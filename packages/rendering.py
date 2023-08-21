@@ -1,10 +1,11 @@
 import random
+import typing
 
 import numpy as np
 import plotly.graph_objects as go
 from enum import Enum
 from typing import List
-from packages.objects import Point, Plane, Vector, Square, Line
+from packages.objects import Point, Plane, Vector, Square, Line, SubSpace
 from packages.utils import flatten
 
 DEF_WINDOW_SIZE = 5
@@ -76,7 +77,10 @@ def handle_lines(
         )
 
 
-def handle_points(fig, points: List[Point], marker_size: float):
+def handle_points(
+    fig, points: List[Point], marker_size: float, consistent_colouring: bool = False
+):
+    def_colour = rand_colour()
     for point in points:
         x, y, z = point.array
         fig.add_trace(
@@ -86,7 +90,10 @@ def handle_points(fig, points: List[Point], marker_size: float):
                 z=[z],
                 mode="markers",
                 name=point.name,
-                marker=dict(size=marker_size, color=rand_colour()),
+                marker=dict(
+                    size=marker_size,
+                    color=def_colour if consistent_colouring else rand_colour(),
+                ),
             )
         )
 
@@ -107,6 +114,28 @@ def handle_planes(fig, planes: List[Plane], plane_size: float, plane_opacity: fl
         )
 
 
+def handle_subspace(fig, subspace: List[SubSpace], marker_size: float):
+    for ss in subspace:
+        for centre_coord, set_of_points in ss.subspace_assignments.items():
+            # print("Coord", centre_coord)
+            # print("Points", set_of_points)
+            # print()
+            # print()
+            # print()
+            handle_points(
+                fig, list(set_of_points), marker_size, consistent_colouring=True
+            )
+
+
+def add_surface(fig, subject_radius):
+    u = np.linspace(0, 2 * np.pi, 100)
+    v = np.linspace(0, np.pi, 100)
+    x = subject_radius * np.outer(np.cos(u), np.sin(v))
+    y = subject_radius * np.outer(np.sin(u), np.sin(v))
+    z = subject_radius * np.outer(np.ones(np.size(u)), np.cos(v))
+    fig.add_trace(go.Surface(x=x, y=y, z=z))
+
+
 def easy_plot(
     *args,
     marker_size: float = 4,
@@ -115,6 +144,7 @@ def easy_plot(
     plane_opacity: float = 0.5,
     window_size=DEF_WINDOW_SIZE,
     subject_radius: float = 1,
+    show_surface: bool = False
 ):
     """
     Plots 3D points, vectors, planes and squares using Plotly.
@@ -138,6 +168,10 @@ def easy_plot(
     squares = [square for square in args if isinstance(square, Square)]
     planes = [plane for plane in args if isinstance(plane, Plane)]
     vectors = [vector.end for vector in args if isinstance(vector, Vector)]
+    subspace = [subspace for subspace in args if isinstance(subspace, SubSpace)]
+
+    if len(subspace) > 2:
+        raise ValueError("Can't have more than one SubSpace")
 
     if not (points or squares or planes or vectors):
         raise ValueError("No points or planes were passed")
@@ -147,13 +181,10 @@ def easy_plot(
     handle_squares(fig, squares, plane_opacity=plane_opacity)
     handle_planes(fig, planes, plane_size=plane_size, plane_opacity=plane_opacity)
     handle_points(fig, vectors, marker_size=marker_size)
+    handle_subspace(fig, subspace, marker_size=marker_size)
 
-    u = np.linspace(0, 2 * np.pi, 100)
-    v = np.linspace(0, np.pi, 100)
-    x = subject_radius * np.outer(np.cos(u), np.sin(v))
-    y = subject_radius * np.outer(np.sin(u), np.sin(v))
-    z = subject_radius * np.outer(np.ones(np.size(u)), np.cos(v))
-    fig.add_trace(go.Surface(x=x, y=y, z=z))
+    if show_surface:
+        add_surface(fig, subject_radius)
 
     Axis.add_to_fig(fig, window_size)
     _range = [-window_size, window_size]
