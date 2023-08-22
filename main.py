@@ -1,6 +1,5 @@
 from multiprocessing import Pool, cpu_count
 import time
-
 import numpy as np
 from tqdm import tqdm
 from scipy.spatial import KDTree
@@ -11,14 +10,14 @@ from functools import partial
 from packages.rendering import easy_plot
 
 
-def assign_center(tree, point_cloud, centre, subspace_radius):
+def assign_center(tree, points, centre, subspace_radius):
     distances, indices = tree.query(
         centre,
         distance_upper_bound=subspace_radius * np.sqrt(2),
         k=len(coords),
     )
     points = [
-        point_cloud[i]
+        points[i]
         for indices_index, i in enumerate(indices)
         if distances[indices_index] != float("inf")
     ]
@@ -28,8 +27,8 @@ def assign_center(tree, point_cloud, centre, subspace_radius):
 if __name__ == "__main__":
     subject_radius = 1
     camera_radius = 3
-    cams_along_inclination = 1
-    inclinations_range = [20, 60, 80]
+    cams_along_inclination = 3
+    inclinations_range = [20, 60]
 
     focal_length = 50
     sensor_width = 36
@@ -38,9 +37,9 @@ if __name__ == "__main__":
     pixel_height = 4
     unit = 1000  # mm
 
-    points_density_for_line = 20
+    points_density_for_line = 40
     window_size = 5
-    subspace_count = 2
+    subspace_count = 3
     # CPU_COUNT = 1
     CPU_COUNT = cpu_count()
 
@@ -72,7 +71,6 @@ if __name__ == "__main__":
         func = partial(
             ray_to_mesh_points,
             points_density_for_line=points_density_for_line,
-            camera_radius=camera_radius,
             subject_radius=subject_radius,
         )
         point_cloud_temp = list(tqdm(pool.imap(func, rays), total=len(rays)))

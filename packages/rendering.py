@@ -144,7 +144,7 @@ def easy_plot(
     plane_opacity: float = 0.5,
     window_size=DEF_WINDOW_SIZE,
     subject_radius: float = 1,
-    show_surface: bool = False
+    show_surface: bool = False,
 ):
     """
     Plots 3D points, vectors, planes and squares using Plotly.

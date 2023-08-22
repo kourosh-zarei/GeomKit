@@ -287,9 +287,7 @@ class Line:
 
         return distance(*(self.end.array - self.start.array))
 
-    def to_mesh(
-        self, density: int, camera_radius: float, subject_radius: float
-    ) -> List[Point]:
+    def to_mesh(self, density: int, subject_radius: float) -> List[Point]:
         x1, y1, z1 = self.start.array
         x2, y2, z2 = self.end.array
         points = np.column_stack(
