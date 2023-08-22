@@ -116,7 +116,7 @@ class Points:
 
 
 
-class Square:
+class Squares:
     """
     A class representing squares in 3D space, each defined by four points.
     """
