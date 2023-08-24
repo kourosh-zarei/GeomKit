@@ -115,20 +115,52 @@ class Points:
         return Points(points)
 
 
+
 class Squares:
     """
     A class representing squares in 3D space, each defined by four points.
     """
 
-    def __init__(self, elements: List[Square]):
+    def __init__(self, elements: List[Point], color: str):
         """
         Creates a new Points object.
 
         Parameters:
         elements (List[Point]): A list of Point objects.
+        color (str): The color of the square.
         """
 
         self.elements = elements
+        self.color = color
+
+    @staticmethod
+    def generate_picture(
+        point: Point,
+        focal_length: float,
+        width: float,
+        height: float,
+        unit: float,
+        index: int,
+        color: str
+    ) -> "Square":
+        """
+        Static method that generates a picture of the Square object as seen from a camera.
+
+        Parameters:
+        point (Point): The location of the camera in 3D space.
+        focal_length (float): The focal length of the camera (in mm).
+        width (float): The width of the picture (in mm).
+        height (float): The height of the picture (in mm).
+        unit (float): The unit of length used in the picture (mm)
+        index (int): Index of the camera.
+        color (str): The color of the square.
+
+        Returns:
+        Square: A new Square object representing the picture of the original Square as seen from the camera.
+        """
+        # Implementation of generating a picture and creating a new Square object
+        # ...
+        return Square(picture_elements, color)
 
     @staticmethod
     def generate_pictures(
@@ -137,24 +169,25 @@ class Squares:
         width: float,
         height: float,
         unit: float,
+        colors: List[str]
     ) -> List["Square"]:
         """
         Static method that generates pictures of the Square object as seen from many cameras.
 
         Parameters:
-        cameras (List[Point]): The location of the cameras in 3D space.
+        points (Points): The locations of the cameras in 3D space.
         focal_length (float): The focal length of the camera (in mm).
         width (float): The width of the picture (in mm).
         height (float): The height of the picture (in mm).
         unit (float): The unit of length used in the picture (mm)
+        colors (List[str]): List of colors for the squares.
 
         Returns:
-        Square: Many new Square objects representing the pictures of the original Squares as seen from the cameras.
+        List[Square]: Many new Square objects representing the pictures of the original Squares as seen from the cameras.
         """
-
         return [
-            Square.generate_picture(point, focal_length, width, height, unit, index)
-            for index, point in enumerate(points.elements)
+            Square.generate_picture(point, focal_length, width, height, unit, index, color)
+            for index, (point, color) in enumerate(zip(points.elements, colors))
         ]
 
 
